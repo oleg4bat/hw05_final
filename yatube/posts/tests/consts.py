@@ -1,5 +1,5 @@
 USERNAME = 'HasNoName'
-TEXT = 'Тестовый пост'
+TEXT = 'Тестовый постТестовый постТестовый постТестовый пост'
 GROUP_SLUG = 'test-slug'
 GROUP_TITLE = 'Тестовая группа'
 GROUP_DESCRIPTION = 'Тестовое описание'

@@ -72,6 +72,18 @@ class PostPagesTests(TestCase):
                 form_field = response.context.get('form').fields.get(value)
                 self.assertIsInstance(form_field, expected)
 
+    def check_context_contains_page_or_post(self, context, post=False):
+        if post:
+            self.assertIn('post', context)
+            post = context['post']
+        else:
+            self.assertIn('page', context)
+            post = context['page'][0]
+        self.assertEqual(post.author, self.post.user)
+        self.assertEqual(post.pub_date, self.post.post.pub_date)
+        self.assertEqual(post.text, self.post.post.text)
+        self.assertEqual(post.group, self.post.post.group)
+
     def test_post_edit_page_show_correct_context(self):
         """Шаблон post_create сформирован с правильным контекстом."""
         response = self.authorized_client.get(reverse(
