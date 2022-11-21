@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}
+Записи сообщества {{ group }}
+{% endblock %}
+{% block content %}
+{% block header %}
+<h1> {{ group }} </h1>
+  <p> {{ group.description }}</p>
+  <hr>
+{% endblock header %}
+{% for post in page_obj %}
+{% include 'includes/main.html' %}
+{% endfor %}
+{% include 'posts/includes/paginator.html' %}
+{% endblock %}

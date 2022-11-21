@@ -1,0 +1,5 @@
+USERNAME = 'HasNoName'
+TEXT = 'Тестовый пост'
+GROUP_SLUG = 'test-slug'
+GROUP_TITLE = 'Тестовая группа'
+GROUP_DESCRIPTION = 'Тестовое описание'
