@@ -28,6 +28,7 @@ class PostPagesTests(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        cache.clear()
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -70,12 +71,24 @@ class PostPagesTests(TestCase):
             self.assertIn('post', context)
             post = context['post']
         else:
-            self.assertIn('page', context)
-            post = context['page'][0]
-        self.assertEqual(post.author, self.post.user)
-        self.assertEqual(post.pub_date, self.post.post.pub_date)
-        self.assertEqual(post.text, self.post.post.text)
-        self.assertEqual(post.group, self.post.post.group)
+            self.assertIn('page_obj', context)
+            post = context['page_obj'][0]
+        self.assertEqual(post.author, self.post.author)
+        self.assertEqual(post.pub_date, self.post.pub_date)
+        self.assertEqual(post.text, self.post.text)
+        self.assertEqual(post.group, self.post.group)
+
+    def test_index_page_context_is_correct(self):
+        response = self.guest_client.get(reverse('posts:index'))
+        self.check_context_contains_page_or_post(response.context)
+
+    def test_profile_page_context_is_correct(self):
+        response = self.guest_client.get(reverse('posts:profile',
+                                         kwargs={'username': 'HasNoName'}))
+        self.check_context_contains_page_or_post(response.context)
+
+        self.assertIn('author', response.context)
+        self.assertEqual(response.context['author'], self.user)
 
     def test_post_edit_page_show_correct_context(self):
         """Шаблон post_create сформирован с правильным контекстом."""
@@ -99,17 +112,28 @@ class PostPagesTests(TestCase):
         response = self.authorized_client.get(reverse(
             'posts:post_detail', kwargs={'post_id': 1}
         ))
-        post = response.context['post']
-        expected_post = PostPagesTests.post
-        self.assertEqual(post, expected_post)
+        self.check_context_contains_page_or_post(response.context, post=True)
+        self.assertIn('user', response.context)
+        self.assertEqual(response.context['user'], self.user)
 
     def test_first_page_contains_ten_records(self):
-        cache.clear()
+        pages = (
+            (1, 10),
+            (2, 1)
+        )
         for i in range(POSTS_IN_PAGE):
             Post.objects.create(
                 author=self.user,
                 text=TEXT,
                 group=self.group,
+            )
+        for page, expected_count in pages:
+            response = self.guest_client.get(
+                reverse('posts:index'), {'page': page}
+            )
+            self.assertEqual(
+                len(response.context.get('page_obj').object_list),
+                expected_count
             )
         response = self.client.get(reverse('posts:index'))
         self.assertEqual(len(response.context['page_obj']), POSTS_IN_PAGE)
