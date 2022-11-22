@@ -13,7 +13,6 @@ class PostPagesTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username=USERNAME)
-        cls.user1 = User.objects.create_user(username='user')
         cls.group = Group.objects.create(
             title=GROUP_TITLE,
             slug=GROUP_SLUG,
@@ -24,17 +23,11 @@ class PostPagesTests(TestCase):
             text=TEXT,
             group=cls.group,
         )
-        for i in range(POSTS_IN_PAGE):
-            Post.objects.create(
-                author=cls.user,
-                text=TEXT,
-                group=cls.group,
-            )
-        cls.guest_client = Client()
-        cls.authorized_client = Client()
-        cls.authorized_client1 = Client()
-        cls.authorized_client1.force_login(cls.user1)
-        cls.authorized_client.force_login(cls.user)
+
+    def setUp(self):
+        self.guest_client = Client()
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -112,11 +105,23 @@ class PostPagesTests(TestCase):
 
     def test_first_page_contains_ten_records(self):
         cache.clear()
+        for i in range(POSTS_IN_PAGE):
+            Post.objects.create(
+                author=self.user,
+                text=TEXT,
+                group=self.group,
+            )
         response = self.client.get(reverse('posts:index'))
         self.assertEqual(len(response.context['page_obj']), POSTS_IN_PAGE)
 
     def test_second_page_contains_tree_records(self):
         cache.clear()
+        for i in range(POSTS_IN_PAGE):
+            Post.objects.create(
+                author=self.user,
+                text=TEXT,
+                group=self.group,
+            )
         response = self.client.get(reverse('posts:index') + '?page=2')
         self.assertEqual(len(response.context['page_obj']), 1)
 
@@ -133,17 +138,19 @@ class PostPagesTests(TestCase):
 
     def test_follow(self):
         follow_count = self.user.follower.all().count()
+        user1 = User.objects.create_user(username='user')
         self.authorized_client.get(reverse(
-            'posts:profile_follow', kwargs={'username': self.user1})
+            'posts:profile_follow', kwargs={'username': user1})
         )
         after_follow_count = self.user.follower.all().count()
         self.assertEqual(after_follow_count, follow_count + 1)
 
     def test_unfollow(self):
+        user1 = User.objects.create_user(username='user')
         self.authorized_client.get(reverse(
-            'posts:profile_follow', kwargs={'username': self.user1})
+            'posts:profile_follow', kwargs={'username': user1})
         )
         after_follow_count = self.user.follower.all().count()
-        Follow.objects.get(user=self.user, author=self.user1).delete()
+        Follow.objects.get(user=self.user, author=user1).delete()
         after_unfollow_count = self.user.follower.all().count()
         self.assertEqual(after_unfollow_count, after_follow_count - 1)

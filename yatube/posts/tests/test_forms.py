@@ -18,15 +18,13 @@ class TaskCreateFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.user = User.objects.create_user(username=USERNAME)
         cls.form = PostForm()
-        cls.post = Post.objects.create(
-            author=cls.user,
-            text=TEXT,
-        )
-        cls.guest_client = Client()
-        cls.authorized_client = Client()
-        cls.authorized_client.force_login(cls.user)
+
+    def setUp(self):
+        self.user = User.objects.create_user(username=USERNAME)
+        self.guest_client = Client()
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
 
     @classmethod
     def tearDownClass(cls):
@@ -35,7 +33,6 @@ class TaskCreateFormTests(TestCase):
 
     def test_create_post(self):
         """Валидная форма создает запись в Post."""
-        tasks_count = Post.objects.count()
         small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x02\x00'
             b'\x01\x00\x80\x00\x00\x00\x00\x00'
@@ -62,7 +59,7 @@ class TaskCreateFormTests(TestCase):
         self.assertRedirects(response, reverse(
             'posts:profile', kwargs={'username': 'HasNoName'})
         )
-        self.assertEqual(Post.objects.count(), tasks_count + 1)
+        self.assertEqual(Post.objects.count(), 1)
         text = Post.objects.first().text
         self.assertEqual(text, form_data['text'])
 
@@ -86,30 +83,40 @@ class TaskCreateFormTests(TestCase):
             slug='new-test-group',
             description='new test description'
         )
+        new_post = Post.objects.create(
+            author=self.user,
+            text=TEXT,
+        )
         form_data = {
             'text': 'слово',
             'group': new_group.id
         }
         response = self.authorized_client.post(
-            reverse('posts:post_edit', kwargs={'post_id': 1}),
+            reverse('posts:post_edit', kwargs={'post_id': new_post.id}),
             data=form_data,
             follow=True
         )
         self.assertRedirects(response, reverse(
-            'posts:post_detail', kwargs={'post_id': 1})
+            'posts:post_detail', kwargs={'post_id': new_post.id})
         )
-        self.assertEqual(Post.objects.first().text, form_data['text'])
-        self.assertEqual(Post.objects.first().group.id, form_data['group'])
+        self.assertEqual(Post.objects.count(), 1)
+        post = Post.objects.first()
+        self.assertEqual(post.text, form_data['text'])
+        self.assertEqual(post.group.id, form_data['group'])
 
     def test_geust_cant_edit(self):
         """Валидная форма создает запись в Post."""
+        post = Post.objects.create(
+            author=self.user,
+            text=TEXT,
+        )
         form_data = {
             'text': 'слово',
         }
         response = self.guest_client.post(
-            reverse('posts:post_edit', kwargs={'post_id': 1}),
+            reverse('posts:post_edit', kwargs={'post_id': post.id}),
             data=form_data,
             follow=True
         )
         self.assertRedirects(response, ('/auth/login/?next=/posts/1/edit/'))
-        self.assertEqual(Post.objects.first().text, self.post.text)
+        self.assertEqual(Post.objects.first().text, post.text)
