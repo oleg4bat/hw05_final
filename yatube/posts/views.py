@@ -66,8 +66,13 @@ def post_detail(request, post_id):
 @login_required
 def post_create(request):
     form = PostForm(request.POST or None)
+    is_edit = False
+    context = {
+        'form': form,
+        'is_edit': is_edit
+    }
     if not form.is_valid():
-        return render(request, 'posts/create_post.html', {'form': form})
+        return render(request, 'posts/create_post.html', context)
     post = form.save(commit=False)
     post.author = request.user
     post.save()

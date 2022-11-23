@@ -62,18 +62,18 @@ class PostPagesTests(TestCase):
 
     def test_create_and_edit_pages_show_correct_context(self):
         """Шаблон post_create сформирован с правильным контекстом."""
-        urls = {
-            'posts:post_create': None,
-            'posts:post_edit': '1',
-        }
-        for name, args in urls.items():
+        urls = [
+            ('posts:post_create', None, False),
+            ('posts:post_edit', '1', True),
+        ]
+        for name, args, is_edit_value in urls:
             response = self.authorized_client.get(reverse(name, args=args))
             self.assertIn('form', response.context)
             self.assertIsInstance(response.context['form'], PostForm)
-            if 'is_edit' in response.context:
-                is_edit = response.context['is_edit']
-                self.assertIsInstance(is_edit, bool)
-                self.assertEqual(is_edit, True)
+            self.assertIn('is_edit', response.context)
+            is_edit = response.context['is_edit']
+            self.assertIsInstance(is_edit, bool)
+            self.assertEqual(is_edit, is_edit_value)
 
     def check_context_contains_page_or_post(self, context, post=False):
         if post:
