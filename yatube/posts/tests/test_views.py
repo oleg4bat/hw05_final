@@ -1,5 +1,8 @@
+import tempfile
+
+from django.conf import settings
 from django.core.cache import cache
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from ..consts import POSTS_IN_PAGE
@@ -7,7 +10,10 @@ from ..forms import PostForm
 from ..models import Follow, Group, Post, User
 from .consts import GROUP_DESCRIPTION, GROUP_SLUG, GROUP_TITLE, TEXT, USERNAME
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
