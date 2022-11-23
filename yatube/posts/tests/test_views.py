@@ -1,9 +1,9 @@
-from django import forms
 from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from ..consts import POSTS_IN_PAGE
+from ..forms import PostForm
 from ..models import Follow, Group, Post, User
 from .consts import GROUP_DESCRIPTION, GROUP_SLUG, GROUP_TITLE, TEXT, USERNAME
 
@@ -54,17 +54,20 @@ class PostPagesTests(TestCase):
                 response = self.authorized_client.get(reverse_name)
                 self.assertTemplateUsed(response, template)
 
-    def test_create_page_show_correct_context(self):
+    def test_create_and_edit_pages_show_correct_context(self):
         """Шаблон post_create сформирован с правильным контекстом."""
-        response = self.authorized_client.get(reverse('posts:post_create'))
-        form_fields = {
-            'text': forms.fields.CharField,
-            'group': forms.models.ModelChoiceField,
+        urls = {
+            'posts:post_create': None,
+            'posts:post_edit': '1',
         }
-        for value, expected in form_fields.items():
-            with self.subTest(value=value):
-                form_field = response.context.get('form').fields.get(value)
-                self.assertIsInstance(form_field, expected)
+        for name, args in urls.items():
+            response = self.authorized_client.get(reverse(name, args=args))
+            self.assertIn('form', response.context)
+            self.assertIsInstance(response.context['form'], PostForm)
+            if 'is_edit' in response.context:
+                is_edit = response.context['is_edit']
+                self.assertIsInstance(is_edit, bool)
+                self.assertEqual(is_edit, True)
 
     def check_context_contains_page_or_post(self, context, post=False):
         if post:
@@ -90,23 +93,6 @@ class PostPagesTests(TestCase):
         self.assertIn('author', response.context)
         self.assertEqual(response.context['author'], self.user)
 
-    def test_post_edit_page_show_correct_context(self):
-        """Шаблон post_create сформирован с правильным контекстом."""
-        response = self.authorized_client.get(reverse(
-            'posts:post_edit', kwargs={'post_id': 1}
-        ))
-        form_fields = {
-            'text': forms.fields.CharField,
-            'group': forms.models.ModelChoiceField,
-        }
-        for value, expected in form_fields.items():
-            with self.subTest(value=value):
-                form_field = response.context.get('form').fields.get(value)
-                self.assertIsInstance(form_field, expected)
-        post = response.context['post']
-        expected_post = PostPagesTests.post
-        self.assertEqual(post, expected_post)
-
     def test_post_datail_page_show_correct_context(self):
         """Шаблон post_create сформирован с правильным контекстом."""
         response = self.authorized_client.get(reverse(
@@ -116,7 +102,7 @@ class PostPagesTests(TestCase):
         self.assertIn('user', response.context)
         self.assertEqual(response.context['user'], self.user)
 
-    def test_first_page_contains_ten_records(self):
+    def test_paginator(self):
         pages = (
             (1, 10),
             (2, 1)
@@ -137,17 +123,6 @@ class PostPagesTests(TestCase):
             )
         response = self.client.get(reverse('posts:index'))
         self.assertEqual(len(response.context['page_obj']), POSTS_IN_PAGE)
-
-    def test_second_page_contains_tree_records(self):
-        cache.clear()
-        for i in range(POSTS_IN_PAGE):
-            Post.objects.create(
-                author=self.user,
-                text=TEXT,
-                group=self.group,
-            )
-        response = self.client.get(reverse('posts:index') + '?page=2')
-        self.assertEqual(len(response.context['page_obj']), 1)
 
     def test_cache_index_page(self):
         response = self.client.get(reverse('posts:index'))
